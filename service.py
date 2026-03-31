@@ -10,7 +10,7 @@ class AgentService:
         )
         self.model_id = "gemini-2.5-flash"
         self.agent = Agent(
-            name="Cloud Assistant",
+            name="cloud_assistant",
             instruction="You are a helpful assistant and concise assistant that specialized in Google Cloud"
         )
 
