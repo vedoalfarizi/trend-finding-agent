@@ -10,15 +10,15 @@ router = APIRouter()
 
 
 @router.post("/ask", response_model=ChatResponse)
-async def ask_simple_agent(request: Request, chat: ChatRequest) -> ChatResponse:
+async def ask_cloud_agent(request: Request, chat: ChatRequest) -> ChatResponse:
     """
-    Chat endpoint using SimpleAgent.
+    Chat endpoint using CloudAgent (GCP-specialized).
 
-    Process user message with the simple agent and return response.
+    Process GCP-related queries with the cloud agent and return response.
 
     Args:
         request: FastAPI request object with app state.
-        chat: Chat request containing user message.
+        chat: Chat request containing user message (GCP-related).
 
     Returns:
         Chat response with status and agent response.
@@ -29,17 +29,17 @@ async def ask_simple_agent(request: Request, chat: ChatRequest) -> ChatResponse:
     try:
         logger.info(f"Received request: {chat.message[:50]}...")
 
-        # Get simple agent from app state
-        simple_agent = request.app.state.simple_agent
+        # Get cloud agent from app state
+        cloud_agent = request.app.state.cloud_agent
 
         # Run agent
-        response_text = await simple_agent.run(chat.message)
+        response_text = await cloud_agent.run(chat.message)
 
-        logger.info("SimpleAgent response generated successfully")
+        logger.info("CloudAgent response generated successfully")
         return ChatResponse(
             status="success",
             agent_response=response_text,
-            agent_type="simple",
+            agent_type="cloud",
         )
 
     except Exception as e:

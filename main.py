@@ -4,7 +4,7 @@ from fastapi import FastAPI
 
 from config.settings import settings
 from routes import chat, sequential
-from services.agent_factory import get_simple_agent, get_sequential_agent
+from services.agent_factory import get_cloud_agent, get_sequential_agent
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -20,12 +20,12 @@ async def lifespan(app: FastAPI):
     try:
         logger.info("Starting FastAPI application with agents...")
 
-        # Initialize SimpleAgent
-        app.state.simple_agent = get_simple_agent(
+        # Initialize CloudAgent (GCP-specialized)
+        app.state.cloud_agent = get_cloud_agent(
             project_id=settings.GOOGLE_CLOUD_PROJECT,
             location=settings.GOOGLE_CLOUD_LOCATION,
             model_id=settings.MODEL_ID,
-            instruction="You are a helpful assistant. Provide clear, concise, and accurate responses.",
+            instruction="You are a specialized Google Cloud Platform (GCP) assistant with deep knowledge of GCP services. Only answer GCP-related questions.",
         )
 
         # Initialize SequentialAgent
@@ -55,7 +55,7 @@ async def lifespan(app: FastAPI):
 # Create FastAPI application with lifespan context manager
 app = FastAPI(
     title="Sequential Agent API",
-    description="FastAPI application with SimpleAgent and SequentialAgent",
+    description="FastAPI application with CloudAgent (GCP-specialized) and SequentialAgent",
     version="1.0.0",
     lifespan=lifespan,
 )
@@ -73,7 +73,7 @@ def read_root():
         "status": "running",
         "message": "Sequential Agent API is operational",
         "endpoints": {
-            "simple": "/ask",
+            "cloud": "/ask",
             "sequential": "/ask-sequential",
             "health": "/docs",
         },
