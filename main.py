@@ -1,41 +1,80 @@
-import os
-from dotenv import load_dotenv
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request
-from service import AgentService
-from pydantic import BaseModel
 
-load_dotenv()
+from fastapi import FastAPI
+
+from config.settings import settings
+from routes import chat, sequential
+from services.agent_factory import get_simple_agent, get_sequential_agent
+from utils.logger import get_logger
+
+logger = get_logger(__name__)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    project_id = os.getenv("GOOGLE_CLOUD_PROJECT")
-    location = os.getenv("GOOGLE_CLOUD_LOCATION")
+    """
+    FastAPI lifespan context manager.
 
-    app.state.agent_service = AgentService(
-        project_id=project_id,
-        location=location
-    )
+    Initializes agents on startup and performs cleanup on shutdown.
+    """
+    try:
+        logger.info("Starting FastAPI application with agents...")
 
-    print(f"Agent service initialized for project: {project_id}")
+        # Initialize SimpleAgent
+        app.state.simple_agent = get_simple_agent(
+            project_id=settings.GOOGLE_CLOUD_PROJECT,
+            location=settings.GOOGLE_CLOUD_LOCATION,
+            model_id=settings.MODEL_ID,
+            instruction="You are a helpful assistant. Provide clear, concise, and accurate responses.",
+        )
 
-    yield
+        # Initialize SequentialAgent
+        app.state.sequential_agent = get_sequential_agent(
+            project_id=settings.GOOGLE_CLOUD_PROJECT,
+            location=settings.GOOGLE_CLOUD_LOCATION,
+            model_id=settings.MODEL_ID,
+            instruction=(
+                "You are a sequential processing agent. "
+                "Break down complex requests, execute them step by step, and provide comprehensive responses."
+            ),
+        )
 
-    print("Shutting down agent service...")
+        logger.info(
+            f"Agents initialized successfully for project: {settings.GOOGLE_CLOUD_PROJECT}"
+        )
 
-app = FastAPI(lifespan=lifespan)
+        yield
 
-class ChatRequest(BaseModel):
-    message: str
+        logger.info("Shutting down FastAPI application...")
+
+    except Exception as e:
+        logger.error(f"Error during application startup: {str(e)}", exc_info=True)
+        raise
+
+
+# Create FastAPI application with lifespan context manager
+app = FastAPI(
+    title="Sequential Agent API",
+    description="FastAPI application with SimpleAgent and SequentialAgent",
+    version="1.0.0",
+    lifespan=lifespan,
+)
+
+
+# Include routes
+app.include_router(chat.router)
+app.include_router(sequential.router)
+
 
 @app.get("/")
 def read_root():
-    return {"Status": "FastAPI is running!"}
-
-@app.post("/ask")
-async def ask_agent(request: Request, chat: ChatRequest):
-    service: AgentService = request.app.state.agent_service
-
-    response_text = await service.get_response(chat.message)
-
-    return {"status": "success", "agent_response": response_text}
+    """Health check endpoint."""
+    return {
+        "status": "running",
+        "message": "Sequential Agent API is operational",
+        "endpoints": {
+            "simple": "/ask",
+            "sequential": "/ask-sequential",
+            "health": "/docs",
+        },
+    }
