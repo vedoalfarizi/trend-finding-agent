@@ -1,6 +1,8 @@
 from google import genai
 from google.adk.agents import Agent
 
+from google.genai import types
+
 from agents.base_agent import BaseAgent
 from utils.logger import get_logger
 
@@ -56,12 +58,13 @@ class CloudAgent(BaseAgent):
 
         try:
             # Call Vertex AI with system instruction to ensure GCP-focused responses
-            # Prepend the instruction to the user message for proper context
-            prompt = f"{self.instruction}\n\nUser query: {user_input}"
             
             response = self.client.models.generate_content(
                 model=self.model_id,
-                contents=prompt
+                contents=user_input,
+                config=types.GenerateContentConfig(
+                    system_instruction=self.instruction,
+                )
             )
             result = response.text
             logger.info(f"CloudAgent response generated successfully")
